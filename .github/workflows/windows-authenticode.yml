@@ -6,6 +6,14 @@ on:
       version:
         description: "Existing release version to sign, for example v0.5.0"
         required: true
+      mode:
+        description: "Run release/config preflight or produce a signed archive"
+        required: true
+        default: "preflight"
+        type: choice
+        options:
+          - preflight
+          - sign
 
 permissions:
   contents: write
@@ -29,6 +37,18 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path work | Out-Null
           gh release download $env:VERSION --repo $env:GITHUB_REPOSITORY --pattern "ctx_${env:VERSION}_windows_amd64.zip" --dir work --clobber
+          gh release download $env:VERSION --repo $env:GITHUB_REPOSITORY --pattern "SHA256SUMS" --dir work --clobber
+          $archive = "work\ctx_${env:VERSION}_windows_amd64.zip"
+          $expectedLine = Get-Content -LiteralPath "work\SHA256SUMS" | Where-Object { $_ -match [regex]::Escape((Split-Path -Leaf $archive)) } | Select-Object -First 1
+          if (-not $expectedLine) {
+            throw "checksum entry not found for $(Split-Path -Leaf $archive)"
+          }
+          $expectedHash = ($expectedLine -split '\s+')[0].ToUpperInvariant()
+          $actualHash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToUpperInvariant()
+          if ($actualHash -ne $expectedHash) {
+            throw "checksum mismatch for $(Split-Path -Leaf $archive): expected $expectedHash got $actualHash"
+          }
+          gh attestation verify $archive --repo $env:GITHUB_REPOSITORY
           Expand-Archive -LiteralPath "work\ctx_${env:VERSION}_windows_amd64.zip" -DestinationPath work\extract -Force
           $exe = Get-ChildItem -LiteralPath work\extract -Recurse -Filter ctx.exe | Select-Object -First 1
           if (-not $exe) {
@@ -38,7 +58,9 @@ jobs:
           "SIGNED_ARCHIVE=ctx_${env:VERSION}_windows_amd64_signed.zip" >> $env:GITHUB_ENV
 
       - name: Validate signing configuration
+        id: signing-config
         env:
+          MODE: ${{ inputs.mode }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
@@ -56,15 +78,24 @@ jobs:
             "AZURE_SIGNING_ACCOUNT",
             "AZURE_SIGNING_CERTIFICATE_PROFILE"
           )) {
-            if ([string]::IsNullOrWhiteSpace((Get-Item "Env:\$name").Value)) {
+            if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
               $missing += $name
             }
           }
           if ($missing.Count -gt 0) {
-            throw "Missing signing configuration: $($missing -join ', ')"
+            "configured=false" >> $env:GITHUB_OUTPUT
+            "missing=$($missing -join ', ')" >> $env:GITHUB_OUTPUT
+            if ($env:MODE -eq "sign") {
+              throw "Missing signing configuration: $($missing -join ', ')"
+            }
+            Write-Output "Signing configuration is incomplete: $($missing -join ', ')"
+          } else {
+            "configured=true" >> $env:GITHUB_OUTPUT
+            Write-Output "Signing configuration is present."
           }
 
       - name: Azure login
+        if: ${{ inputs.mode == 'sign' }}
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -72,6 +103,7 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Sign ctx.exe with Azure Artifact Signing
+        if: ${{ inputs.mode == 'sign' }}
         uses: azure/artifact-signing-action@v1
         with:
           endpoint: ${{ vars.AZURE_SIGNING_ENDPOINT }}
@@ -83,6 +115,7 @@ jobs:
           timestamp-digest: SHA256
 
       - name: Verify Authenticode signature
+        if: ${{ inputs.mode == 'sign' }}
         shell: pwsh
         run: |
           $signature = Get-AuthenticodeSignature -LiteralPath $env:CTX_EXE
@@ -92,6 +125,7 @@ jobs:
           }
 
       - name: Repack signed archive
+        if: ${{ inputs.mode == 'sign' }}
         shell: pwsh
         run: |
           $root = Split-Path -Parent $env:CTX_EXE
@@ -101,9 +135,21 @@ jobs:
           }
 
       - name: Upload signed archive to release
+        if: ${{ inputs.mode == 'sign' }}
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
         shell: pwsh
         run: |
           gh release upload $env:VERSION "work\$env:SIGNED_ARCHIVE" "work\SHA256SUMS.signed" --repo $env:GITHUB_REPOSITORY --clobber
+
+      - name: Preflight summary
+        if: ${{ inputs.mode == 'preflight' }}
+        shell: pwsh
+        run: |
+          if ("${{ steps.signing-config.outputs.configured }}" -eq "true") {
+            Write-Output "Preflight passed: release asset, checksum, attestation, archive layout, and signing configuration are ready."
+          } else {
+            Write-Output "Preflight passed for release asset, checksum, attestation, and archive layout."
+            Write-Output "Signing configuration still missing: ${{ steps.signing-config.outputs.missing }}"
+          }
