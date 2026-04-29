@@ -3,6 +3,7 @@ package bench
 import (
 	"bufio"
 	"encoding/json"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,6 +27,7 @@ type Case struct {
 	Task                 string   `json:"task"`
 	Repo                 string   `json:"repo,omitempty"`
 	ExpectedTouchedAreas []string `json:"expected_touched_areas"`
+	ExpectedTerms        []string `json:"expected_terms,omitempty"`
 	Budget               int      `json:"budget"`
 	BaselineMode         string   `json:"baseline_mode,omitempty"`
 }
@@ -41,6 +43,9 @@ type CaseResult struct {
 	TokenReductionPercent float64  `json:"token_reduction_percent"`
 	ExpectedAreaHit       bool     `json:"expected_area_hit"`
 	MissingExpectedAreas  []string `json:"missing_expected_areas"`
+	ExpectedTermHit       bool     `json:"expected_term_hit"`
+	MissingExpectedTerms  []string `json:"missing_expected_terms"`
+	ContextQualityScore   float64  `json:"context_quality_score"`
 	RuntimeMillis         int64    `json:"runtime_ms"`
 }
 
@@ -84,14 +89,18 @@ func Run(req RunRequest) (Result, error) {
 			return Result{}, err
 		}
 		missing := missingAreas(packet, benchCase.ExpectedTouchedAreas)
+		missingTerms := missingTerms(packet, benchCase.ExpectedTerms)
 		reduction := 0.0
 		if naiveTokens > 0 {
 			reduction = float64(naiveTokens-packet.Meta.TokensUsed) * 100 / float64(naiveTokens)
 		}
+		qualityScore := contextQualityScore(len(missing) == 0, len(missingTerms) == 0, reduction)
 		result.Cases = append(result.Cases, CaseResult{
 			Task: benchCase.Task, TokensNaive: naiveTokens, TokensCompiled: packet.Meta.TokensUsed,
 			TokenReductionPercent: reduction, ExpectedAreaHit: len(missing) == 0,
-			MissingExpectedAreas: missing, RuntimeMillis: time.Since(start).Milliseconds(),
+			MissingExpectedAreas: missing, ExpectedTermHit: len(missingTerms) == 0,
+			MissingExpectedTerms: missingTerms, ContextQualityScore: qualityScore,
+			RuntimeMillis: time.Since(start).Milliseconds(),
 		})
 	}
 	return result, nil
@@ -219,4 +228,36 @@ func missingAreas(packet compiler.ContextPacket, expected []string) []string {
 		}
 	}
 	return missing
+}
+
+func missingTerms(packet compiler.ContextPacket, expected []string) []string {
+	var missing []string
+	var haystack string
+	for _, item := range packet.Context {
+		haystack += "\n" + strings.ToLower(item.Key)
+		haystack += "\n" + strings.ToLower(item.Value)
+		haystack += "\n" + strings.ToLower(item.SourcePath)
+	}
+	for _, term := range expected {
+		if !strings.Contains(haystack, strings.ToLower(term)) {
+			missing = append(missing, term)
+		}
+	}
+	return missing
+}
+
+func contextQualityScore(areaHit, termHit bool, reduction float64) float64 {
+	score := 0.0
+	if areaHit {
+		score += 0.45
+	}
+	if termHit {
+		score += 0.35
+	}
+	if reduction >= 30 {
+		score += 0.20
+	} else if reduction > 0 {
+		score += 0.20 * (reduction / 30)
+	}
+	return math.Round(score*10000) / 10000
 }

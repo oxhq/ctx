@@ -25,7 +25,7 @@ The first committed benchmark corpus targets Morfx:
 ctx bench --repo /path/to/morfx --cases benchmarks/morfx/cases.jsonl --baseline naive
 ```
 
-The benchmark output reports naive tokens, compiled tokens, token reduction, runtime, and whether expected repository areas were included. The corpus is intentionally small in v0; it is a regression seed, not a broad quality claim.
+The benchmark output reports naive tokens, compiled tokens, token reduction, runtime, expected-area hits, expected-term hits, and a context quality score. The corpus is intentionally small in v0; it is a regression seed, not a broad quality claim.
 
 On Windows, run the dogfood corpus and write evidence with:
 
@@ -82,7 +82,7 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-The release workflow publishes archives and `SHA256SUMS` to GitHub Releases. Release artifacts are unsigned in v0.
+The release workflow publishes archives and `SHA256SUMS` to GitHub Releases. Release artifacts are checksum-verifiable but unsigned in v0.
 
 To smoke-test a published Windows release asset:
 

@@ -33,5 +33,8 @@ func TestMorfxBenchmarkCorpusIsValidJSONL(t *testing.T) {
 		if len(benchCase.ExpectedTouchedAreas) == 0 {
 			t.Fatalf("case %d has no expected touched areas", i+1)
 		}
+		if len(benchCase.ExpectedTerms) == 0 {
+			t.Fatalf("case %d has no expected terms", i+1)
+		}
 	}
 }

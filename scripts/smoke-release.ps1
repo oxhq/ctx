@@ -10,7 +10,18 @@ Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $work | Out-Null
 
 gh release download $Version --repo $Repo --pattern "ctx_${Version}_windows_amd64.zip" --dir $work --clobber
+gh release download $Version --repo $Repo --pattern "SHA256SUMS" --dir $work --clobber
 $zip = Join-Path $work "ctx_${Version}_windows_amd64.zip"
+$checksums = Join-Path $work "SHA256SUMS"
+$expectedLine = Get-Content -LiteralPath $checksums | Where-Object { $_ -match [regex]::Escape((Split-Path -Leaf $zip)) } | Select-Object -First 1
+if (-not $expectedLine) {
+    throw "checksum entry not found for $(Split-Path -Leaf $zip)"
+}
+$expectedHash = ($expectedLine -split '\s+')[0].ToUpperInvariant()
+$actualHash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToUpperInvariant()
+if ($actualHash -ne $expectedHash) {
+    throw "checksum mismatch for $(Split-Path -Leaf $zip): expected $expectedHash got $actualHash"
+}
 Expand-Archive -LiteralPath $zip -DestinationPath $work -Force
 $ctx = Get-ChildItem -LiteralPath $work -Recurse -Filter ctx.exe | Select-Object -First 1
 if (-not $ctx) {
@@ -31,3 +42,4 @@ Set-Content -LiteralPath (Join-Path $fixture "cases.jsonl") -Value '{"task":"ref
 & $ctx.FullName bench --repo $fixture --cases (Join-Path $fixture "cases.jsonl") --baseline naive | Out-Null
 
 Write-Output "release smoke passed with $($ctx.FullName)"
+Write-Output "checksum verified for $(Split-Path -Leaf $zip)"

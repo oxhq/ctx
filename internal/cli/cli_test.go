@@ -41,8 +41,16 @@ func TestCLIScanCompileExplainAndBench(t *testing.T) {
 	if err := Execute([]string{"bench", "--repo", root, "--cases", cases, "--baseline", "naive"}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(root, ".ctx", "bench", "results.json")); err != nil {
+	benchResult := filepath.Join(root, ".ctx", "bench", "results.json")
+	if _, err := os.Stat(benchResult); err != nil {
 		t.Fatal(err)
+	}
+	benchJSON, err := os.ReadFile(benchResult)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(benchJSON, []byte("context_quality_score")) {
+		t.Fatalf("expected bench result to include context quality score: %s", benchJSON)
 	}
 
 	var out bytes.Buffer

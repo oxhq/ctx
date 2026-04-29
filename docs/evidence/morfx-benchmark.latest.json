@@ -7,7 +7,10 @@
       "token_reduction_percent": 96.7114027729807,
       "expected_area_hit": true,
       "missing_expected_areas": null,
-      "runtime_ms": 3895
+      "expected_term_hit": true,
+      "missing_expected_terms": null,
+      "context_quality_score": 1,
+      "runtime_ms": 3876
     },
     {
       "task": "debug mcp transform finalize staging transaction",
@@ -16,7 +19,10 @@
       "token_reduction_percent": 96.71058041808523,
       "expected_area_hit": true,
       "missing_expected_areas": null,
-      "runtime_ms": 3424
+      "expected_term_hit": true,
+      "missing_expected_terms": null,
+      "context_quality_score": 1,
+      "runtime_ms": 3415
     },
     {
       "task": "extend recipe command execution flow",
@@ -25,7 +31,10 @@
       "token_reduction_percent": 96.71195100957769,
       "expected_area_hit": true,
       "missing_expected_areas": null,
-      "runtime_ms": 3840
+      "expected_term_hit": true,
+      "missing_expected_terms": null,
+      "context_quality_score": 1,
+      "runtime_ms": 3819
     },
     {
       "task": "fix mcp replace tool query behavior",
@@ -34,7 +43,10 @@
       "token_reduction_percent": 96.7116768912792,
       "expected_area_hit": true,
       "missing_expected_areas": null,
-      "runtime_ms": 3414
+      "expected_term_hit": true,
+      "missing_expected_terms": null,
+      "context_quality_score": 1,
+      "runtime_ms": 3419
     },
     {
       "task": "refactor golang provider dsl query support",
@@ -43,6 +55,9 @@
       "token_reduction_percent": 96.7116768912792,
       "expected_area_hit": true,
       "missing_expected_areas": null,
+      "expected_term_hit": true,
+      "missing_expected_terms": null,
+      "context_quality_score": 1,
       "runtime_ms": 3755
     }
   ]

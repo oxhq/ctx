@@ -12,7 +12,7 @@ func TestBenchReportsTokenReductionAndExpectedAreaHits(t *testing.T) {
 	writeFile(t, filepath.Join(root, "planner.go"), "package app\nfunc TransformPlanner() {}\n")
 	writeFile(t, filepath.Join(root, "unrelated.go"), "package app\nvar Noise = `"+largeString(2000)+"`\n")
 	cases := filepath.Join(root, "cases.jsonl")
-	if err := os.WriteFile(cases, []byte(`{"task":"refactor transform planner","expected_touched_areas":["planner.go"],"budget":300,"baseline_mode":"naive"}`+"\n"), 0o644); err != nil {
+	if err := os.WriteFile(cases, []byte(`{"task":"refactor transform planner","expected_touched_areas":["planner.go"],"expected_terms":["TransformPlanner"],"budget":300,"baseline_mode":"naive"}`+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -32,5 +32,11 @@ func TestBenchReportsTokenReductionAndExpectedAreaHits(t *testing.T) {
 	}
 	if !got.ExpectedAreaHit || len(got.MissingExpectedAreas) != 0 {
 		t.Fatalf("expected planner.go hit: %#v", got)
+	}
+	if !got.ExpectedTermHit || len(got.MissingExpectedTerms) != 0 {
+		t.Fatalf("expected TransformPlanner term hit: %#v", got)
+	}
+	if got.ContextQualityScore < 0.99 {
+		t.Fatalf("expected high context quality score, got %#v", got)
 	}
 }
