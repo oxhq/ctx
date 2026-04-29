@@ -1,0 +1,32 @@
+# Go build outputs
+bin/
+dist/
+build/
+*.exe
+*.test
+*.out
+coverage.out
+
+# Local ctx runtime state
+.ctx/
+ctx.db
+ctx.db-*
+*.sqlite
+*.sqlite3
+
+# Benchmark and profiling artifacts
+bench-results/
+*.prof
+*.pprof
+*.trace
+
+# Editor and OS noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Local environment files
+.env
+.env.*
+!.env.example
