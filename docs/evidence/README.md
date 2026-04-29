@@ -9,4 +9,5 @@ Evidence boundaries:
 
 - Morfx benchmark evidence proves expected-area retrieval, expected-term retrieval, context quality score, and token reduction for the committed corpus.
 - Release smoke proves the downloaded Windows amd64 archive matches `SHA256SUMS` and can run the CLI path on a tiny fixture.
+- Hosted dogfood proof runs the Morfx corpus in GitHub Actions by cloning `oxhq/morfx`.
 - It does not prove signed binaries, package-manager install, or agent patch quality.

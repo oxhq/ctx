@@ -16,16 +16,11 @@ New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 
 Push-Location $root
 try {
-    $result = go run ./cmd/ctx bench --repo $morfx.Path --cases $casesPath.Path --baseline naive
+    $result = go run ./cmd/ctx bench --repo $morfx.Path --cases $casesPath.Path --baseline naive --min-reduction 30 --min-quality 1 --require-expected-hits
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
     }
     $result | Set-Content -LiteralPath $outputPath -Encoding utf8
-    $parsed = $result | ConvertFrom-Json
-    $failed = @($parsed.cases | Where-Object { -not $_.expected_area_hit -or -not $_.expected_term_hit -or $_.token_reduction_percent -lt 30 -or $_.context_quality_score -lt 1.0 })
-    if ($failed.Count -gt 0) {
-        Write-Error "Dogfood benchmark failed threshold checks"
-    }
     Write-Output "wrote $outputPath"
 }
 finally {

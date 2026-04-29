@@ -3,6 +3,7 @@ package bench
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"math"
 	"os"
 	"os/exec"
@@ -34,6 +35,13 @@ type Case struct {
 
 type Result struct {
 	Cases []CaseResult `json:"cases"`
+}
+
+type Thresholds struct {
+	MinReductionPercent float64
+	MinQualityScore     float64
+	RequireAreaHit      bool
+	RequireTermHit      bool
 }
 
 type CaseResult struct {
@@ -116,6 +124,32 @@ func WriteResults(repo string, result Result) error {
 		return err
 	}
 	return os.WriteFile(filepath.Join(dir, "results.json"), body, 0o644)
+}
+
+func ValidateThresholds(result Result, thresholds Thresholds) error {
+	var failures []string
+	for _, benchCase := range result.Cases {
+		var reasons []string
+		if thresholds.RequireAreaHit && !benchCase.ExpectedAreaHit {
+			reasons = append(reasons, "missing expected areas: "+strings.Join(benchCase.MissingExpectedAreas, ","))
+		}
+		if thresholds.RequireTermHit && !benchCase.ExpectedTermHit {
+			reasons = append(reasons, "missing expected terms: "+strings.Join(benchCase.MissingExpectedTerms, ","))
+		}
+		if thresholds.MinReductionPercent > 0 && benchCase.TokenReductionPercent < thresholds.MinReductionPercent {
+			reasons = append(reasons, fmt.Sprintf("token reduction %.2f below %.2f", benchCase.TokenReductionPercent, thresholds.MinReductionPercent))
+		}
+		if thresholds.MinQualityScore > 0 && benchCase.ContextQualityScore < thresholds.MinQualityScore {
+			reasons = append(reasons, fmt.Sprintf("quality score %.2f below %.2f", benchCase.ContextQualityScore, thresholds.MinQualityScore))
+		}
+		if len(reasons) > 0 {
+			failures = append(failures, benchCase.Task+": "+strings.Join(reasons, "; "))
+		}
+	}
+	if len(failures) > 0 {
+		return fmt.Errorf("benchmark thresholds failed: %s", strings.Join(failures, " | "))
+	}
+	return nil
 }
 
 func readCases(path string) ([]Case, error) {

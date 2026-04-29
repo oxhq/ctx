@@ -10,7 +10,7 @@
       "expected_term_hit": true,
       "missing_expected_terms": null,
       "context_quality_score": 1,
-      "runtime_ms": 3876
+      "runtime_ms": 4106
     },
     {
       "task": "debug mcp transform finalize staging transaction",
@@ -22,7 +22,7 @@
       "expected_term_hit": true,
       "missing_expected_terms": null,
       "context_quality_score": 1,
-      "runtime_ms": 3415
+      "runtime_ms": 3919
     },
     {
       "task": "extend recipe command execution flow",
@@ -34,7 +34,7 @@
       "expected_term_hit": true,
       "missing_expected_terms": null,
       "context_quality_score": 1,
-      "runtime_ms": 3819
+      "runtime_ms": 4410
     },
     {
       "task": "fix mcp replace tool query behavior",
@@ -46,7 +46,7 @@
       "expected_term_hit": true,
       "missing_expected_terms": null,
       "context_quality_score": 1,
-      "runtime_ms": 3419
+      "runtime_ms": 4215
     },
     {
       "task": "refactor golang provider dsl query support",
@@ -58,7 +58,7 @@
       "expected_term_hit": true,
       "missing_expected_terms": null,
       "context_quality_score": 1,
-      "runtime_ms": 3755
+      "runtime_ms": 4212
     }
   ]
 }

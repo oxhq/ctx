@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -11,7 +12,7 @@ func TestCLIScanCompileExplainAndBench(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "go.mod"), "module example.com/app\n")
 	writeFile(t, filepath.Join(root, "planner.go"), "package app\nfunc TransformPlanner() {}\n")
-	cases := filepath.Join(root, "cases.jsonl")
+	cases := filepath.Join(t.TempDir(), "cases.jsonl")
 	if err := os.WriteFile(cases, []byte(`{"task":"refactor transform planner","expected_touched_areas":["planner.go"],"budget":300}`+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -83,5 +84,26 @@ func TestCLIHelpPrintsCommands(t *testing.T) {
 	}
 	if !bytes.Contains(out.Bytes(), []byte("ctx scan <path>")) {
 		t.Fatalf("expected command help, got %q", out.String())
+	}
+}
+
+func TestCLIBenchThresholdFlagsFailWhenGateIsNotMet(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "go.mod"), "module example.com/app\n")
+	writeFile(t, filepath.Join(root, "planner.go"), "package app\nfunc TransformPlanner() {}\n")
+	cases := filepath.Join(t.TempDir(), "cases.jsonl")
+	if err := os.WriteFile(cases, []byte(`{"task":"refactor transform planner","expected_touched_areas":["planner.go"],"expected_terms":["MissingTerm"],"budget":300}`+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	err := Execute([]string{
+		"bench", "--repo", root, "--cases", cases, "--baseline", "naive",
+		"--min-reduction", "30", "--min-quality", "1", "--require-expected-hits",
+	})
+	if err == nil {
+		t.Fatalf("expected threshold failure")
+	}
+	if !strings.Contains(err.Error(), "MissingTerm") {
+		t.Fatalf("expected missing term in error, got %v", err)
 	}
 }

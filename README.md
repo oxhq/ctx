@@ -27,11 +27,19 @@ ctx bench --repo /path/to/morfx --cases benchmarks/morfx/cases.jsonl --baseline 
 
 The benchmark output reports naive tokens, compiled tokens, token reduction, runtime, expected-area hits, expected-term hits, and a context quality score. The corpus is intentionally small in v0; it is a regression seed, not a broad quality claim.
 
+Use threshold flags to turn benchmark results into a failing gate:
+
+```sh
+ctx bench --repo /path/to/morfx --cases benchmarks/morfx/cases.jsonl --baseline naive --min-reduction 30 --min-quality 1 --require-expected-hits
+```
+
 On Windows, run the dogfood corpus and write evidence with:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\dogfood-morfx.ps1 -MorfxRepo C:\path\to\morfx
 ```
+
+The same gate also runs in GitHub Actions against `oxhq/morfx`. It requires expected-area hits, expected-term hits, at least 30% token reduction, and context quality score `1.0`.
 
 ## What It Does
 

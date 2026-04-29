@@ -1,0 +1,40 @@
+name: Dogfood
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  morfx:
+    name: Morfx benchmark corpus
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout ctx
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Clone Morfx
+        run: git clone --depth 1 https://github.com/oxhq/morfx.git "$RUNNER_TEMP/morfx"
+
+      - name: Run Morfx dogfood benchmark
+        run: |
+          go run ./cmd/ctx bench \
+            --repo "$RUNNER_TEMP/morfx" \
+            --cases benchmarks/morfx/cases.jsonl \
+            --baseline naive \
+            --min-reduction 30 \
+            --min-quality 1 \
+            --require-expected-hits

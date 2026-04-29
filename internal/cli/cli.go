@@ -52,7 +52,7 @@ Usage:
   ctx scan <path>
   ctx compile "<task>" --repo <path> --budget <tokens> --format json|markdown --explain
   ctx explain --repo <path> --last
-  ctx bench --repo <path> --cases <file> --baseline naive|repomix
+  ctx bench --repo <path> --cases <file> --baseline naive|repomix [--min-reduction 30 --min-quality 1 --require-expected-hits]
   ctx version
 `)
 }
@@ -172,6 +172,9 @@ func benchCmd(args []string, out io.Writer) error {
 	repo := fs.String("repo", ".", "repository path")
 	cases := fs.String("cases", "", "cases jsonl")
 	baseline := fs.String("baseline", "naive", "baseline mode")
+	minReduction := fs.Float64("min-reduction", 0, "minimum token reduction percent")
+	minQuality := fs.Float64("min-quality", 0, "minimum context quality score")
+	requireExpectedHits := fs.Bool("require-expected-hits", false, "require expected areas and expected terms to be hit")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -189,11 +192,18 @@ func benchCmd(args []string, out io.Writer) error {
 	if err := bench.WriteResults(absRepo, result); err != nil {
 		return err
 	}
+	thresholds := bench.Thresholds{
+		MinReductionPercent: *minReduction,
+		MinQualityScore:     *minQuality,
+		RequireAreaHit:      *requireExpectedHits,
+		RequireTermHit:      *requireExpectedHits,
+	}
+	thresholdErr := bench.ValidateThresholds(result, thresholds)
 	body, err := compiler.MarshalStable(result)
 	if err != nil {
 		return err
 	}
 	_, _ = out.Write(body)
 	_, _ = out.Write([]byte("\n"))
-	return nil
+	return thresholdErr
 }

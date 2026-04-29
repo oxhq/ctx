@@ -3,6 +3,7 @@ package bench
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -38,5 +39,41 @@ func TestBenchReportsTokenReductionAndExpectedAreaHits(t *testing.T) {
 	}
 	if got.ContextQualityScore < 0.99 {
 		t.Fatalf("expected high context quality score, got %#v", got)
+	}
+}
+
+func TestValidateThresholdsFailsOnLowQualityResult(t *testing.T) {
+	result := Result{Cases: []CaseResult{{
+		Task: "bad case", TokenReductionPercent: 10, ExpectedAreaHit: true,
+		ExpectedTermHit: true, ContextQualityScore: 0.8,
+	}}}
+
+	err := ValidateThresholds(result, Thresholds{
+		MinReductionPercent: 30,
+		MinQualityScore:     1,
+		RequireAreaHit:      true,
+		RequireTermHit:      true,
+	})
+	if err == nil {
+		t.Fatalf("expected threshold failure")
+	}
+	if !strings.Contains(err.Error(), "bad case") {
+		t.Fatalf("expected case name in error, got %v", err)
+	}
+}
+
+func TestValidateThresholdsPassesWhenAllCasesMeetGate(t *testing.T) {
+	result := Result{Cases: []CaseResult{{
+		Task: "good case", TokenReductionPercent: 96, ExpectedAreaHit: true,
+		ExpectedTermHit: true, ContextQualityScore: 1,
+	}}}
+
+	if err := ValidateThresholds(result, Thresholds{
+		MinReductionPercent: 30,
+		MinQualityScore:     1,
+		RequireAreaHit:      true,
+		RequireTermHit:      true,
+	}); err != nil {
+		t.Fatalf("expected thresholds to pass: %v", err)
 	}
 }
