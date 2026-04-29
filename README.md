@@ -15,6 +15,16 @@ ctx explain --last
 ctx bench --repo <path> --cases <file> --baseline naive|repomix
 ```
 
+## Benchmarks
+
+The first committed benchmark corpus targets Morfx:
+
+```sh
+ctx bench --repo /path/to/morfx --cases benchmarks/morfx/cases.jsonl --baseline naive
+```
+
+The benchmark output reports naive tokens, compiled tokens, token reduction, runtime, and whether expected repository areas were included. The corpus is intentionally small in v0; it is a regression seed, not a broad quality claim.
+
 ## What It Does
 
 - `scan` indexes a repository into local SQLite state.
@@ -54,3 +64,14 @@ go build ./...
 ```
 
 The CI workflow runs formatting validation, tests, vet, and build using the Go version declared in `go.mod`.
+
+## Releases
+
+Tagged releases build versioned archives for Linux, macOS, and Windows on amd64 and arm64:
+
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The release workflow publishes archives and `SHA256SUMS` to GitHub Releases. Release artifacts are unsigned in v0.

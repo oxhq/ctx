@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
@@ -42,5 +43,19 @@ func TestCLIScanCompileExplainAndBench(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(root, ".ctx", "bench", "results.json")); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestCLIVersionPrintsConfiguredVersion(t *testing.T) {
+	original := Version
+	Version = "v9.9.9-test"
+	t.Cleanup(func() { Version = original })
+
+	var out bytes.Buffer
+	if err := ExecuteWithOutput([]string{"version"}, &out); err != nil {
+		t.Fatal(err)
+	}
+	if out.String() != "v9.9.9-test\n" {
+		t.Fatalf("unexpected version output %q", out.String())
 	}
 }

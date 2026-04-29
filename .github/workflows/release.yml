@@ -1,0 +1,89 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version, for example v0.1.0"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build release assets
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Test
+        run: go test ./...
+
+      - name: Build archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            version="${{ inputs.version }}"
+          fi
+          mkdir -p dist
+          targets=(
+            "linux amd64"
+            "linux arm64"
+            "darwin amd64"
+            "darwin arm64"
+            "windows amd64"
+            "windows arm64"
+          )
+          for target in "${targets[@]}"; do
+            read -r goos goarch <<< "$target"
+            name="ctx_${version}_${goos}_${goarch}"
+            binary="ctx"
+            if [ "$goos" = "windows" ]; then
+              binary="ctx.exe"
+            fi
+            mkdir -p "dist/${name}"
+            GOOS="$goos" GOARCH="$goarch" go build -trimpath -ldflags "-s -w -X main.version=${version}" -o "dist/${name}/${binary}" ./cmd/ctx
+            cp README.md "dist/${name}/README.md"
+            if [ "$goos" = "windows" ]; then
+              (cd dist && zip -q -r "${name}.zip" "${name}")
+            else
+              tar -C dist -czf "dist/${name}.tar.gz" "${name}"
+            fi
+            rm -rf "dist/${name}"
+          done
+          (cd dist && sha256sum * > SHA256SUMS)
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            version="${{ inputs.version }}"
+            if ! git rev-parse "$version" >/dev/null 2>&1; then
+              git tag "$version"
+              git push origin "$version"
+            fi
+          fi
+          if gh release view "$version" >/dev/null 2>&1; then
+            gh release upload "$version" dist/* --clobber
+          else
+            gh release create "$version" dist/* --title "$version" --notes "ctx ${version} release assets."
+          fi

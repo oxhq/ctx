@@ -1,0 +1,5 @@
+{"task":"refactor php provider config transform planner","expected_touched_areas":["providers/php/config.go"],"budget":12000,"baseline_mode":"naive"}
+{"task":"debug mcp transform finalize staging transaction","expected_touched_areas":["mcp/transform_finalize.go"],"budget":12000,"baseline_mode":"naive"}
+{"task":"extend recipe command execution flow","expected_touched_areas":["cmd/recipe/main.go"],"budget":12000,"baseline_mode":"naive"}
+{"task":"fix mcp replace tool query behavior","expected_touched_areas":["mcp/tools/replace.go"],"budget":12000,"baseline_mode":"naive"}
+{"task":"refactor golang provider dsl query support","expected_touched_areas":["providers/golang/dsl_query_test.go"],"budget":12000,"baseline_mode":"naive"}

@@ -14,6 +14,8 @@ import (
 	"github.com/oxhq/ctx/internal/store"
 )
 
+var Version = "dev"
+
 func Execute(args []string) error {
 	return ExecuteWithOutput(args, io.Discard)
 }
@@ -31,6 +33,9 @@ func ExecuteWithOutput(args []string, out io.Writer) error {
 		return explainCmd(args[1:], out)
 	case "bench":
 		return benchCmd(args[1:], out)
+	case "version":
+		_, _ = fmt.Fprintln(out, Version)
+		return nil
 	default:
 		return fmt.Errorf("unknown command %q", args[0])
 	}
