@@ -13,4 +13,4 @@ Proof:
 
 Boundary:
 
-- This proves checksum-verifiable Windows archive execution. It does not prove code signing or package-manager installation.
+- This proves checksum-verifiable Windows archive execution. It predates GitHub artifact attestation verification and does not prove Authenticode signing or package-manager installation.

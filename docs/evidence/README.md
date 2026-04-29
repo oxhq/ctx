@@ -8,6 +8,7 @@ This directory stores small, reproducible proof artifacts for `ctx`.
 Evidence boundaries:
 
 - Morfx benchmark evidence proves expected-area retrieval, expected-term retrieval, context quality score, and token reduction for the committed corpus.
-- Release smoke proves the downloaded Windows amd64 archive matches `SHA256SUMS` and can run the CLI path on a tiny fixture.
+- Release smoke proves the downloaded Windows amd64 archive matches `SHA256SUMS`, verifies against GitHub artifact attestations, and can run the CLI path on a tiny fixture.
 - Hosted dogfood proof runs the Morfx corpus in GitHub Actions by cloning `oxhq/morfx`.
+- Windows Authenticode proof is separate: the manual workflow requires Azure Artifact Signing credentials and publishes a signed Windows archive only after signature verification passes.
 - It does not prove signed binaries, package-manager install, or agent patch quality.

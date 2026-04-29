@@ -12,6 +12,9 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
+  artifact-metadata: write
 
 jobs:
   release:
@@ -67,6 +70,11 @@ jobs:
             rm -rf "dist/${name}"
           done
           (cd dist && sha256sum * > SHA256SUMS)
+
+      - name: Attest release assets
+        uses: actions/attest@v4
+        with:
+          subject-path: dist/*
 
       - name: Publish GitHub release
         env:

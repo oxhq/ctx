@@ -1,0 +1,109 @@
+name: Windows Authenticode
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Existing release version to sign, for example v0.5.0"
+        required: true
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  sign-windows-amd64:
+    name: Sign Windows amd64 release asset
+    runs-on: windows-2025
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download release archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path work | Out-Null
+          gh release download $env:VERSION --repo $env:GITHUB_REPOSITORY --pattern "ctx_${env:VERSION}_windows_amd64.zip" --dir work --clobber
+          Expand-Archive -LiteralPath "work\ctx_${env:VERSION}_windows_amd64.zip" -DestinationPath work\extract -Force
+          $exe = Get-ChildItem -LiteralPath work\extract -Recurse -Filter ctx.exe | Select-Object -First 1
+          if (-not $exe) {
+            throw "ctx.exe not found in release archive"
+          }
+          "CTX_EXE=$($exe.FullName)" >> $env:GITHUB_ENV
+          "SIGNED_ARCHIVE=ctx_${env:VERSION}_windows_amd64_signed.zip" >> $env:GITHUB_ENV
+
+      - name: Validate signing configuration
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          AZURE_SIGNING_ENDPOINT: ${{ vars.AZURE_SIGNING_ENDPOINT }}
+          AZURE_SIGNING_ACCOUNT: ${{ vars.AZURE_SIGNING_ACCOUNT }}
+          AZURE_SIGNING_CERTIFICATE_PROFILE: ${{ vars.AZURE_SIGNING_CERTIFICATE_PROFILE }}
+        shell: pwsh
+        run: |
+          $missing = @()
+          foreach ($name in @(
+            "AZURE_CLIENT_ID",
+            "AZURE_TENANT_ID",
+            "AZURE_SUBSCRIPTION_ID",
+            "AZURE_SIGNING_ENDPOINT",
+            "AZURE_SIGNING_ACCOUNT",
+            "AZURE_SIGNING_CERTIFICATE_PROFILE"
+          )) {
+            if ([string]::IsNullOrWhiteSpace((Get-Item "Env:\$name").Value)) {
+              $missing += $name
+            }
+          }
+          if ($missing.Count -gt 0) {
+            throw "Missing signing configuration: $($missing -join ', ')"
+          }
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Sign ctx.exe with Azure Artifact Signing
+        uses: azure/artifact-signing-action@v1
+        with:
+          endpoint: ${{ vars.AZURE_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ vars.AZURE_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ vars.AZURE_SIGNING_CERTIFICATE_PROFILE }}
+          files: ${{ env.CTX_EXE }}
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Verify Authenticode signature
+        shell: pwsh
+        run: |
+          $signature = Get-AuthenticodeSignature -LiteralPath $env:CTX_EXE
+          $signature | Format-List
+          if ($signature.Status -ne "Valid") {
+            throw "Authenticode signature is not valid: $($signature.Status)"
+          }
+
+      - name: Repack signed archive
+        shell: pwsh
+        run: |
+          $root = Split-Path -Parent $env:CTX_EXE
+          Compress-Archive -Path (Join-Path $root "*") -DestinationPath "work\$env:SIGNED_ARCHIVE" -Force
+          Get-FileHash -LiteralPath "work\$env:SIGNED_ARCHIVE" -Algorithm SHA256 | ForEach-Object {
+            "$($_.Hash.ToLowerInvariant())  $env:SIGNED_ARCHIVE" | Set-Content -LiteralPath "work\SHA256SUMS.signed"
+          }
+
+      - name: Upload signed archive to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        shell: pwsh
+        run: |
+          gh release upload $env:VERSION "work\$env:SIGNED_ARCHIVE" "work\SHA256SUMS.signed" --repo $env:GITHUB_REPOSITORY --clobber

@@ -1,5 +1,5 @@
 param(
-    [string] $Version = "v0.2.0",
+    [string] $Version = "v0.5.0",
     [string] $Repo = "oxhq/ctx"
 )
 
@@ -22,6 +22,7 @@ $actualHash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToUpperInv
 if ($actualHash -ne $expectedHash) {
     throw "checksum mismatch for $(Split-Path -Leaf $zip): expected $expectedHash got $actualHash"
 }
+gh attestation verify $zip --repo $Repo | Out-Null
 Expand-Archive -LiteralPath $zip -DestinationPath $work -Force
 $ctx = Get-ChildItem -LiteralPath $work -Recurse -Filter ctx.exe | Select-Object -First 1
 if (-not $ctx) {
@@ -43,3 +44,4 @@ Set-Content -LiteralPath (Join-Path $fixture "cases.jsonl") -Value '{"task":"ref
 
 Write-Output "release smoke passed with $($ctx.FullName)"
 Write-Output "checksum verified for $(Split-Path -Leaf $zip)"
+Write-Output "attestation verified for $(Split-Path -Leaf $zip)"

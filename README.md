@@ -90,10 +90,37 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-The release workflow publishes archives and `SHA256SUMS` to GitHub Releases. Release artifacts are checksum-verifiable but unsigned in v0.
+The release workflow publishes archives and `SHA256SUMS` to GitHub Releases. Release artifacts are checksum-verifiable and provenance-verifiable through GitHub artifact attestations.
 
-To smoke-test a published Windows release asset:
+Verify a release archive:
+
+```sh
+gh release download v0.5.0 --repo oxhq/ctx --pattern ctx_v0.5.0_windows_amd64.zip
+gh release download v0.5.0 --repo oxhq/ctx --pattern SHA256SUMS
+sha256sum --check --ignore-missing SHA256SUMS
+gh attestation verify ctx_v0.5.0_windows_amd64.zip --repo oxhq/ctx
+```
+
+## Windows Authenticode
+
+`ctx` includes a manual `Windows Authenticode` workflow for signing the Windows amd64 release asset once an Azure Artifact Signing account and certificate profile are configured.
+
+Required repository secrets:
+
+- `AZURE_CLIENT_ID`
+- `AZURE_TENANT_ID`
+- `AZURE_SUBSCRIPTION_ID`
+
+Required repository variables:
+
+- `AZURE_SIGNING_ENDPOINT`
+- `AZURE_SIGNING_ACCOUNT`
+- `AZURE_SIGNING_CERTIFICATE_PROFILE`
+
+The workflow signs `ctx.exe`, verifies the Authenticode signature, and uploads `ctx_<version>_windows_amd64_signed.zip` plus `SHA256SUMS.signed` to the existing release. This is intentionally manual because it depends on paid/validated signing identity.
+
+To smoke-test a published Windows release asset, including checksum and attestation verification:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-release.ps1 -Version v0.2.0
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-release.ps1 -Version v0.5.0
 ```
