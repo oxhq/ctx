@@ -21,7 +21,7 @@ func writeFile(t *testing.T, path, body string) {
 func TestScanExtractsGoModuleLayoutAndDocsFacts(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "go.mod"), "module example.com/app\n\nrequire github.com/acme/lib v1.2.3\n")
-	writeFile(t, filepath.Join(root, "cmd", "app", "main.go"), "package main\nfunc main() {}\n")
+	writeFile(t, filepath.Join(root, "cmd", "app", "main.go"), "package main\ntype Runner struct{}\nfunc TransformPlanner() {}\nfunc main() {}\n")
 	writeFile(t, filepath.Join(root, "README.md"), "# App\n")
 	writeFile(t, filepath.Join(root, "vendor", "ignored.go"), "package vendor\n")
 
@@ -44,7 +44,20 @@ func TestScanExtractsGoModuleLayoutAndDocsFacts(t *testing.T) {
 	assertFact("project.go.module")
 	assertFact("project.go.dependency")
 	assertFact("project.layout.package")
+	assertFact("project.go.symbol")
 	assertFact("project.doc")
+
+	foundSymbol := false
+	for _, fact := range facts {
+		if fact.Key == "project.go.symbol" && string(fact.Value) != "" && fact.SourcePath == "cmd/app/main.go" {
+			if string(fact.Value) == `{"kind":"func","line":3,"name":"TransformPlanner"}` {
+				foundSymbol = true
+			}
+		}
+	}
+	if !foundSymbol {
+		t.Fatalf("missing TransformPlanner symbol fact in %#v", facts)
+	}
 
 	for _, source := range sources {
 		if source.Path == "vendor/ignored.go" {

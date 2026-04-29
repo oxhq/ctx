@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -163,7 +164,34 @@ func itemFromCandidate(candidate model.Candidate) model.ContextItem {
 	}
 	return model.ContextItem{
 		ID: candidate.ID, Key: key, Value: value, SourcePath: candidate.SourcePath,
+		StartLine: candidate.StartLine, EndLine: candidate.EndLine,
 	}
+}
+
+func MarshalMarkdown(packet ContextPacket, explain Explanation) string {
+	var builder strings.Builder
+	builder.WriteString("# ctx context packet\n\n")
+	builder.WriteString(fmt.Sprintf("- intent: %s\n", packet.Task.Intent))
+	builder.WriteString(fmt.Sprintf("- task: %s\n", packet.Task.Query))
+	builder.WriteString(fmt.Sprintf("- budget: %d\n", packet.Meta.Budget))
+	builder.WriteString(fmt.Sprintf("- tokens_used: %d\n\n", packet.Meta.TokensUsed))
+	builder.WriteString("## Context\n\n")
+	for _, item := range packet.Context {
+		location := item.SourcePath
+		if item.StartLine > 0 {
+			location = fmt.Sprintf("%s:%d-%d", item.SourcePath, item.StartLine, item.EndLine)
+		}
+		builder.WriteString(fmt.Sprintf("### %s\n\n", location))
+		builder.WriteString("```text\n")
+		builder.WriteString(item.Value)
+		builder.WriteString("\n```\n\n")
+	}
+	builder.WriteString("## Explain\n\n")
+	builder.WriteString(fmt.Sprintf("- budget_used: %d/%d\n", explain.Budget.Used, explain.Budget.Max))
+	builder.WriteString(fmt.Sprintf("- included: %d\n", len(explain.Included)))
+	builder.WriteString(fmt.Sprintf("- collapsed: %d\n", len(explain.Collapsed)))
+	builder.WriteString(fmt.Sprintf("- excluded: %d\n", len(explain.Excluded)))
+	return builder.String()
 }
 
 func snippet(text string) string {

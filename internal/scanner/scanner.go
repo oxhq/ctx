@@ -5,6 +5,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -123,6 +126,9 @@ func factsForSource(source model.Source, now time.Time, recent bool) []model.Fac
 		}
 	case strings.HasSuffix(source.Path, ".go"):
 		add("project.layout.package", filepath.ToSlash(filepath.Dir(source.Path)), 0.8)
+		for _, symbol := range parseGoSymbols(source.AbsPath) {
+			add("project.go.symbol", symbol, 0.85)
+		}
 	case strings.EqualFold(filepath.Base(source.Path), "README.md") || strings.HasPrefix(source.Path, "docs/"):
 		add("project.doc", source.Path, 0.8)
 	case isConfig(source.Path):
@@ -132,6 +138,46 @@ func factsForSource(source model.Source, now time.Time, recent bool) []model.Fac
 		add("git.recent_file", source.Path, 0.75)
 	}
 	return facts
+}
+
+type goSymbol struct {
+	Kind string `json:"kind"`
+	Line int    `json:"line"`
+	Name string `json:"name"`
+}
+
+func parseGoSymbols(path string) []goSymbol {
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, path, nil, parser.SkipObjectResolution)
+	if err != nil {
+		return nil
+	}
+	var symbols []goSymbol
+	for _, decl := range file.Decls {
+		switch typed := decl.(type) {
+		case *ast.FuncDecl:
+			symbols = append(symbols, goSymbol{Kind: "func", Line: fset.Position(typed.Pos()).Line, Name: typed.Name.Name})
+		case *ast.GenDecl:
+			kind := typed.Tok.String()
+			for _, spec := range typed.Specs {
+				switch specTyped := spec.(type) {
+				case *ast.TypeSpec:
+					symbols = append(symbols, goSymbol{Kind: kind, Line: fset.Position(specTyped.Pos()).Line, Name: specTyped.Name.Name})
+				case *ast.ValueSpec:
+					for _, name := range specTyped.Names {
+						symbols = append(symbols, goSymbol{Kind: kind, Line: fset.Position(name.Pos()).Line, Name: name.Name})
+					}
+				}
+			}
+		}
+	}
+	sort.Slice(symbols, func(i, j int) bool {
+		if symbols[i].Line == symbols[j].Line {
+			return symbols[i].Name < symbols[j].Name
+		}
+		return symbols[i].Line < symbols[j].Line
+	})
+	return symbols
 }
 
 func parseGoMod(path string) (string, []string) {

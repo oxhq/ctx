@@ -22,9 +22,13 @@ func Execute(args []string) error {
 
 func ExecuteWithOutput(args []string, out io.Writer) error {
 	if len(args) == 0 {
-		return errors.New("missing command")
+		printHelp(out)
+		return nil
 	}
 	switch args[0] {
+	case "-h", "--help", "help":
+		printHelp(out)
+		return nil
 	case "scan":
 		return scanCmd(args[1:], out)
 	case "compile":
@@ -39,6 +43,18 @@ func ExecuteWithOutput(args []string, out io.Writer) error {
 	default:
 		return fmt.Errorf("unknown command %q", args[0])
 	}
+}
+
+func printHelp(out io.Writer) {
+	_, _ = fmt.Fprint(out, `ctx is a deterministic context compiler runtime.
+
+Usage:
+  ctx scan <path>
+  ctx compile "<task>" --repo <path> --budget <tokens> --format json|markdown --explain
+  ctx explain --repo <path> --last
+  ctx bench --repo <path> --cases <file> --baseline naive|repomix
+  ctx version
+`)
 }
 
 func scanCmd(args []string, out io.Writer) error {
@@ -80,8 +96,8 @@ func compileCmd(args []string, out io.Writer) error {
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
 	}
-	if *format != "json" {
-		return errors.New("only --format json is supported in v0")
+	if *format != "json" && *format != "markdown" {
+		return errors.New("only --format json or markdown is supported")
 	}
 	absRepo, err := filepath.Abs(*repo)
 	if err != nil {
@@ -109,9 +125,14 @@ func compileCmd(args []string, out io.Writer) error {
 	if err := compiler.WriteLast(absRepo, packet, explanation); err != nil {
 		return err
 	}
-	body, err := compiler.MarshalStable(packet)
-	if err != nil {
-		return err
+	var body []byte
+	if *format == "markdown" {
+		body = []byte(compiler.MarshalMarkdown(packet, explanation))
+	} else {
+		body, err = compiler.MarshalStable(packet)
+		if err != nil {
+			return err
+		}
 	}
 	_, _ = out.Write(body)
 	_, _ = out.Write([]byte("\n"))

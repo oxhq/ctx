@@ -44,6 +44,14 @@ func TestCLIScanCompileExplainAndBench(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, ".ctx", "bench", "results.json")); err != nil {
 		t.Fatal(err)
 	}
+
+	var out bytes.Buffer
+	if err := ExecuteWithOutput([]string{"compile", "refactor transform planner", "--repo", root, "--budget", "300", "--format", "markdown"}, &out); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(out.Bytes(), []byte("# ctx context packet")) {
+		t.Fatalf("expected markdown output, got %q", out.String())
+	}
 }
 
 func TestCLIVersionPrintsConfiguredVersion(t *testing.T) {
@@ -57,5 +65,15 @@ func TestCLIVersionPrintsConfiguredVersion(t *testing.T) {
 	}
 	if out.String() != "v9.9.9-test\n" {
 		t.Fatalf("unexpected version output %q", out.String())
+	}
+}
+
+func TestCLIHelpPrintsCommands(t *testing.T) {
+	var out bytes.Buffer
+	if err := ExecuteWithOutput([]string{"--help"}, &out); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(out.Bytes(), []byte("ctx scan <path>")) {
+		t.Fatalf("expected command help, got %q", out.String())
 	}
 }

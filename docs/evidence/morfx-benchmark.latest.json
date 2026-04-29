@@ -1,0 +1,49 @@
+﻿{
+  "cases": [
+    {
+      "task": "refactor php provider config transform planner",
+      "tokens_naive": 364806,
+      "tokens_compiled": 11997,
+      "token_reduction_percent": 96.7114027729807,
+      "expected_area_hit": true,
+      "missing_expected_areas": null,
+      "runtime_ms": 3895
+    },
+    {
+      "task": "debug mcp transform finalize staging transaction",
+      "tokens_naive": 364806,
+      "tokens_compiled": 12000,
+      "token_reduction_percent": 96.71058041808523,
+      "expected_area_hit": true,
+      "missing_expected_areas": null,
+      "runtime_ms": 3424
+    },
+    {
+      "task": "extend recipe command execution flow",
+      "tokens_naive": 364806,
+      "tokens_compiled": 11995,
+      "token_reduction_percent": 96.71195100957769,
+      "expected_area_hit": true,
+      "missing_expected_areas": null,
+      "runtime_ms": 3840
+    },
+    {
+      "task": "fix mcp replace tool query behavior",
+      "tokens_naive": 364806,
+      "tokens_compiled": 11996,
+      "token_reduction_percent": 96.7116768912792,
+      "expected_area_hit": true,
+      "missing_expected_areas": null,
+      "runtime_ms": 3414
+    },
+    {
+      "task": "refactor golang provider dsl query support",
+      "tokens_naive": 364806,
+      "tokens_compiled": 11996,
+      "token_reduction_percent": 96.7116768912792,
+      "expected_area_hit": true,
+      "missing_expected_areas": null,
+      "runtime_ms": 3755
+    }
+  ]
+}

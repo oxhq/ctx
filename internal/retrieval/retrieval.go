@@ -2,6 +2,7 @@ package retrieval
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
 	"os"
 	"path/filepath"
@@ -51,9 +52,11 @@ func (r LocalRetriever) Search(query string, limit int) ([]model.Candidate, erro
 	}
 	for _, source := range sources {
 		body, _ := os.ReadFile(source.AbsPath)
-		text := source.Path + "\n" + string(body)
+		fullText := source.Path + "\n" + string(body)
+		snippet, startLine, endLine := snippetForQuery(string(body), queryTerms)
 		docs = append(docs, searchDoc{
-			id: source.ID, kind: "code", sourcePath: source.Path, sourceHash: source.Hash, text: text,
+			id: source.ID, kind: "code", sourcePath: source.Path, sourceHash: source.Hash,
+			text: fullText, snippet: snippet, startLine: startLine, endLine: endLine,
 		})
 	}
 	idf := inverseDocumentFrequency(docs)
@@ -65,8 +68,9 @@ func (r LocalRetriever) Search(query string, limit int) ([]model.Candidate, erro
 		}
 		candidates = append(candidates, model.Candidate{
 			ID: doc.id, Kind: doc.kind, Key: doc.key, Value: doc.value, SourcePath: doc.sourcePath,
-			SourceHash: doc.sourceHash, Text: doc.text, Score: round(score), Reasons: reasons,
-			Tokens: r.tokenizer.Count(doc.text),
+			SourceHash: doc.sourceHash, StartLine: doc.startLine, EndLine: doc.endLine,
+			Text: candidateText(doc), Score: round(score), Reasons: reasons,
+			Tokens: r.tokenizer.Count(candidateText(doc)),
 		})
 	}
 	sort.Slice(candidates, func(i, j int) bool {
@@ -86,6 +90,8 @@ func (r LocalRetriever) Search(query string, limit int) ([]model.Candidate, erro
 
 type searchDoc struct {
 	id, kind, key, value, sourcePath, sourceHash, text string
+	snippet                                            string
+	startLine, endLine                                 int
 }
 
 func scoreDoc(doc searchDoc, queryTerms []string, idf map[string]float64) (float64, []string) {
@@ -120,19 +126,66 @@ func scoreDoc(doc searchDoc, queryTerms []string, idf map[string]float64) (float
 			reasons = append(reasons, "symbol_match:"+term)
 		}
 	}
-	if strings.Contains(doc.text, "git.recent_file") {
+	hasQuerySignal := score > 0
+	if strings.Contains(doc.text, "git.recent_file") && hasQuerySignal {
 		score += 0.75
 		reasons = append(reasons, "recent_file")
 	}
-	if doc.kind == "code" && strings.HasSuffix(lowerPath, ".go") {
+	if doc.kind == "code" && strings.HasSuffix(lowerPath, ".go") && hasQuerySignal {
 		score += 1.0
 		reasons = append(reasons, "go_source")
+	}
+	if doc.kind == "code" && doc.startLine > 0 && hasQuerySignal {
+		score += 0.5
+		reasons = append(reasons, "line_window")
 	}
 	if generatedFile(lowerPath) {
 		score -= 3.0
 		reasons = append(reasons, "generated_file_penalty")
 	}
 	return score, reasons
+}
+
+func candidateText(doc searchDoc) string {
+	if doc.kind == "code" && doc.snippet != "" {
+		return doc.snippet
+	}
+	return doc.text
+}
+
+func snippetForQuery(body string, queryTerms []string) (string, int, int) {
+	lines := strings.Split(body, "\n")
+	match := 0
+	for i, line := range lines {
+		lineTerms := terms(line)
+		for _, queryTerm := range queryTerms {
+			for _, lineTerm := range lineTerms {
+				if queryTerm == lineTerm || strings.Contains(lineTerm, queryTerm) {
+					match = i + 1
+					break
+				}
+			}
+			if match > 0 {
+				break
+			}
+		}
+		if match > 0 {
+			break
+		}
+	}
+	if match == 0 {
+		if len(lines) == 0 {
+			return "", 0, 0
+		}
+		match = 1
+	}
+	start := max(1, match-3)
+	end := min(len(lines), match+6)
+	var builder strings.Builder
+	for lineNo := start; lineNo <= end; lineNo++ {
+		builder.WriteString(fmt.Sprintf("%4d | %s\n", lineNo, lines[lineNo-1]))
+	}
+	return strings.TrimRight(builder.String(), "\n"), start, end
 }
 
 func inverseDocumentFrequency(docs []searchDoc) map[string]float64 {
@@ -199,4 +252,11 @@ func generatedFile(path string) bool {
 
 func round(v float64) float64 {
 	return math.Round(v*10000) / 10000
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

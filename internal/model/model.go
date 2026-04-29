@@ -38,6 +38,8 @@ type Candidate struct {
 	Value      string   `json:"value,omitempty"`
 	SourcePath string   `json:"source_path"`
 	SourceHash string   `json:"source_hash,omitempty"`
+	StartLine  int      `json:"start_line,omitempty"`
+	EndLine    int      `json:"end_line,omitempty"`
 	Text       string   `json:"text,omitempty"`
 	Score      float64  `json:"score"`
 	Reasons    []string `json:"reasons"`
@@ -54,6 +56,8 @@ type ContextItem struct {
 	Key        string `json:"key"`
 	Value      string `json:"value"`
 	SourcePath string `json:"source_path,omitempty"`
+	StartLine  int    `json:"start_line,omitempty"`
+	EndLine    int    `json:"end_line,omitempty"`
 	Tokens     int    `json:"tokens,omitempty"`
 	Collapsed  bool   `json:"collapsed,omitempty"`
 }
