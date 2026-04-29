@@ -1,5 +1,5 @@
 param(
-    [string] $Version = "v0.5.0",
+    [string] $Version = "v0.6.0",
     [string] $Repo = "oxhq/ctx"
 )
 
