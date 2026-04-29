@@ -95,56 +95,14 @@ The release workflow publishes archives and `SHA256SUMS` to GitHub Releases. Rel
 Verify a release archive:
 
 ```sh
-gh release download v0.6.0 --repo oxhq/ctx --pattern ctx_v0.6.0_windows_amd64.zip
-gh release download v0.6.0 --repo oxhq/ctx --pattern SHA256SUMS
+gh release download v0.7.0 --repo oxhq/ctx --pattern ctx_v0.7.0_windows_amd64.zip
+gh release download v0.7.0 --repo oxhq/ctx --pattern SHA256SUMS
 sha256sum --check --ignore-missing SHA256SUMS
-gh attestation verify ctx_v0.6.0_windows_amd64.zip --repo oxhq/ctx
-```
-
-## Windows Authenticode
-
-`ctx` includes a manual `Windows Authenticode` workflow for signing the Windows amd64 release asset once an Azure Artifact Signing account and certificate profile are configured.
-
-Required repository secrets:
-
-- `AZURE_CLIENT_ID`
-- `AZURE_TENANT_ID`
-- `AZURE_SUBSCRIPTION_ID`
-
-Required repository variables:
-
-- `AZURE_SIGNING_ENDPOINT`
-- `AZURE_SIGNING_ACCOUNT`
-- `AZURE_SIGNING_CERTIFICATE_PROFILE`
-
-Check whether the repository has the required signing configuration without printing secret values:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\check-windows-signing-config.ps1
-```
-
-Run a preflight against an existing release before signing:
-
-```sh
-gh workflow run "Windows Authenticode" --repo oxhq/ctx -f version=v0.6.0 -f mode=preflight
-```
-
-Run the signer once the Azure Artifact Signing account, certificate profile, and repository configuration are ready:
-
-```sh
-gh workflow run "Windows Authenticode" --repo oxhq/ctx -f version=v0.6.0 -f mode=sign
-```
-
-The workflow signs `ctx.exe`, verifies the Authenticode signature, and uploads `ctx_<version>_windows_amd64_signed.zip` plus `SHA256SUMS.signed` to the existing release. This is intentionally manual because it depends on paid/validated signing identity.
-
-After a signed archive is published, smoke-test it with:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-signed-release.ps1 -Version v0.6.0
+gh attestation verify ctx_v0.7.0_windows_amd64.zip --repo oxhq/ctx
 ```
 
 To smoke-test a published Windows release asset, including checksum and attestation verification:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-release.ps1 -Version v0.6.0
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-release.ps1 -Version v0.7.0
 ```

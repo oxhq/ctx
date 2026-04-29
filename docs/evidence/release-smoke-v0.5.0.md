@@ -28,4 +28,4 @@ Hosted proof:
 Boundary:
 
 - This proves the published Windows amd64 archive can be downloaded, checksum-verified, provenance-verified with GitHub artifact attestations, and run through the CLI smoke path.
-- This does not prove Windows Authenticode signing. The manual workflow requires Azure Artifact Signing configuration before it can produce `ctx_v0.5.0_windows_amd64_signed.zip`.
+- This does not prove code-signed binaries or package-manager installation.
